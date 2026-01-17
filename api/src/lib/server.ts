@@ -12,9 +12,9 @@ import getPort from 'get-port'
 import { IncomingMessage, Server, ServerResponse } from 'http'
 import { readFileSync } from 'fs'
 
-async function createCertificate(options: pem.CertificateCreationOptions, originalKeys?: any): Promise<pem.CertificateCreationResult> {
+async function createCertificate(options: pem.CertificateCreationOptions, originalKeys?: pem.CertificateCreationResult): Promise<pem.CertificateCreationResult> {
   return new Promise((success, fail) => {
-    if (originalKeys && originalKeys.certificate) {
+    if (originalKeys?.certificate) {
       pem.checkCertificate(originalKeys.certificate, (error, valid) => {
         if (error || !valid) {
           console.log('Creating updated Self-Signed Certificate')
