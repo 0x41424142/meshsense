@@ -2,47 +2,40 @@ import 'dotenv/config'
 import express, { type Express } from 'express'
 import { WebSocketHTTPServer } from './wss'
 import { State } from './state'
-// import https from 'https'
-// import pem from 'pem'
-// import { store } from './persistence'
+import https from 'https'
+import http from 'http'
+import pem from 'pem'
+import { store } from './persistence'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import { staticDirectory } from './paths'
 import getPort from 'get-port'
 import { IncomingMessage, Server, ServerResponse } from 'http'
+import { readFileSync } from 'fs'
 
-// async function createCertificate(options: pem.CertificateCreationOptions, originalKeys?: any): Promise<pem.CertificateCreationResult> {
-//   return new Promise((success, fail) => {
-//     if (originalKeys) {
-//       pem.checkCertificate(originalKeys?.certificate || {}, (error, valid) => {
-//         if (error || !valid) {
-//           console.log('Creating updated Self-Signed Certificate')
-//           pem.createCertificate(options, (error, keys) => {
-//             if (error) return fail(error)
-//             success(keys)
-//           })
-//         }
-//         console.log('Current Certificate is valid')
-//         return success(originalKeys)
-//       })
-//     } else {
-//       console.log('Creating new Self-Signed Certificate')
-//       pem.createCertificate(options, (error, keys) => {
-//         if (error) return fail(error)
-//         success(keys)
-//       })
-//     }
-//   })
-// }
-
-// let originalKeys = store['keys']
-
-/** Create Self Signed Certificate */
-// let keys = await createCertificate({ days: 365 * 5, selfSigned: true }, originalKeys)
-// store['keys'] = keys
-
-// HTTPS
-// let httpsServer = https.createServer({ key: keys.serviceKey, cert: keys.certificate }, app)
-// export let server = httpsServer.listen(Number(process.env.PORT) || 5920)
+async function createCertificate(options: pem.CertificateCreationOptions, originalKeys?: any): Promise<pem.CertificateCreationResult> {
+  return new Promise((success, fail) => {
+    if (originalKeys) {
+      pem.checkCertificate(originalKeys?.certificate || '', (error, valid) => {
+        if (error || !valid) {
+          console.log('Creating updated Self-Signed Certificate')
+          pem.createCertificate(options, (error, keys) => {
+            if (error) return fail(error)
+            success(keys)
+          })
+        } else {
+          console.log('Current Certificate is valid')
+          return success(originalKeys)
+        }
+      })
+    } else {
+      console.log('Creating new Self-Signed Certificate')
+      pem.createCertificate(options, (error, keys) => {
+        if (error) return fail(error)
+        success(keys)
+      })
+    }
+  })
+}
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error(String(reason))
@@ -60,8 +53,45 @@ export let server: Server<typeof IncomingMessage, typeof ServerResponse>
 export let wss: WebSocketHTTPServer
 
 async function initSever() {
-  /** Begin Listening for connections */
-  server = app.listen(Number(process.env.PORT) || (await getPort({ port: 5920 })))
+  const port = Number(process.env.PORT) || (await getPort({ port: 5920 }))
+  
+  // Check if HTTPS should be enabled (default: true for self-signed cert)
+  const useHttps = process.env.DISABLE_HTTPS !== 'true'
+  
+  if (useHttps) {
+    let key: string
+    let cert: string
+    
+    // Check if user provided custom certificate
+    if (process.env.CERT_PATH && process.env.KEY_PATH) {
+      console.log('Using custom certificate from environment variables')
+      try {
+        cert = readFileSync(process.env.CERT_PATH, 'utf8')
+        key = readFileSync(process.env.KEY_PATH, 'utf8')
+      } catch (error) {
+        console.error('Error reading certificate files:', error)
+        throw new Error('Failed to read custom certificate files. Please check CERT_PATH and KEY_PATH.')
+      }
+    } else {
+      // Generate or retrieve self-signed certificate
+      const originalKeys = store['keys']
+      const keys = await createCertificate({ days: 365 * 5, selfSigned: true }, originalKeys)
+      store['keys'] = keys
+      key = keys.serviceKey
+      cert = keys.certificate
+    }
+    
+    /** Begin Listening for connections with HTTPS */
+    const httpsServer = https.createServer({ key, cert }, app)
+    server = httpsServer.listen(port)
+    console.log('HTTPS server enabled')
+  } else {
+    /** Begin Listening for connections with HTTP */
+    server = http.createServer(app)
+    server.listen(port)
+    console.log('HTTP server enabled (HTTPS disabled)')
+  }
+  
   wss = new WebSocketHTTPServer(server, { path: '/ws' })
 
   State.subscribe(({ state, action, args }) => {

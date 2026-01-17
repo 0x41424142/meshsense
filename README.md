@@ -23,6 +23,31 @@ dbus-run-session xvfb-run ./meshsense-arm64.AppImage --headless \
 
 See also [Headless FAQ](https://affirmatech.com/meshsense/faq#headless)
 
+### HTTPS Configuration
+
+By default, MeshSense now runs with HTTPS enabled using a self-signed certificate. The certificate is automatically generated and persisted for subsequent runs.
+
+**Environment Variables:**
+
+- `DISABLE_HTTPS` - Set to `true` to disable HTTPS and use HTTP instead
+- `CERT_PATH` - Path to a custom SSL certificate file (must be used with `KEY_PATH`)
+- `KEY_PATH` - Path to a custom SSL private key file (must be used with `CERT_PATH`)
+
+**Examples:**
+
+```sh
+# Use auto-generated self-signed certificate (default)
+./meshsense-x86_64.AppImage --headless
+
+# Disable HTTPS and use HTTP only
+DISABLE_HTTPS=true ./meshsense-x86_64.AppImage --headless
+
+# Use custom certificate and key
+CERT_PATH=/path/to/cert.pem KEY_PATH=/path/to/key.pem ./meshsense-x86_64.AppImage --headless
+```
+
+**Note:** When using the self-signed certificate, browsers will show a security warning. You can safely proceed by accepting the certificate exception.
+
 ## Debian Dependencies
 
 Ubuntu and Raspberry Pi OS users will need the following dependency installed to run the AppImage:
