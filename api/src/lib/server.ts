@@ -14,8 +14,8 @@ import { readFileSync } from 'fs'
 
 async function createCertificate(options: pem.CertificateCreationOptions, originalKeys?: any): Promise<pem.CertificateCreationResult> {
   return new Promise((success, fail) => {
-    if (originalKeys) {
-      pem.checkCertificate(originalKeys?.certificate || '', (error, valid) => {
+    if (originalKeys && originalKeys.certificate) {
+      pem.checkCertificate(originalKeys.certificate, (error, valid) => {
         if (error || !valid) {
           console.log('Creating updated Self-Signed Certificate')
           pem.createCertificate(options, (error, keys) => {
@@ -68,9 +68,12 @@ async function initServer() {
     
     if (hasCertPath && hasKeyPath) {
       console.log('Using custom certificate from environment variables')
+      const certPath = process.env.CERT_PATH as string
+      const keyPath = process.env.KEY_PATH as string
+      
       try {
-        cert = readFileSync(process.env.CERT_PATH!, 'utf8')
-        key = readFileSync(process.env.KEY_PATH!, 'utf8')
+        cert = readFileSync(certPath, 'utf8')
+        key = readFileSync(keyPath, 'utf8')
       } catch (error) {
         console.error('Error reading certificate files:', error)
         throw new Error('Failed to read custom certificate files. Please check CERT_PATH and KEY_PATH.')
