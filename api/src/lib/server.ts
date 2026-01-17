@@ -52,7 +52,7 @@ app.use(express.json({ limit: '500mb' }))
 export let server: Server<typeof IncomingMessage, typeof ServerResponse>
 export let wss: WebSocketHTTPServer
 
-async function initSever() {
+async function initServer() {
   const port = Number(process.env.PORT) || (await getPort({ port: 5920 }))
   
   // Check if HTTPS should be enabled (default: true for self-signed cert)
@@ -63,7 +63,12 @@ async function initSever() {
     let cert: string
     
     // Check if user provided custom certificate
-    if (process.env.CERT_PATH && process.env.KEY_PATH) {
+    if (process.env.CERT_PATH || process.env.KEY_PATH) {
+      // Validate that both CERT_PATH and KEY_PATH are provided
+      if (!process.env.CERT_PATH || !process.env.KEY_PATH) {
+        throw new Error('Both CERT_PATH and KEY_PATH must be provided together for custom certificates.')
+      }
+      
       console.log('Using custom certificate from environment variables')
       try {
         cert = readFileSync(process.env.CERT_PATH, 'utf8')
@@ -162,7 +167,7 @@ async function initSever() {
 }
 
 export async function createRoutes(callback: (app: Express) => void) {
-  await initSever()
+  await initServer()
   await callback(app)
   finalize()
 }
