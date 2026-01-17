@@ -65,7 +65,7 @@ async function initServer() {
     // Check if user provided custom certificate
     if (process.env.CERT_PATH || process.env.KEY_PATH) {
       // Validate that both CERT_PATH and KEY_PATH are provided
-      if (!process.env.CERT_PATH || !process.env.KEY_PATH) {
+      if (!!process.env.CERT_PATH !== !!process.env.KEY_PATH) {
         throw new Error('Both CERT_PATH and KEY_PATH must be provided together for custom certificates.')
       }
       
@@ -92,8 +92,7 @@ async function initServer() {
     console.log('HTTPS server enabled')
   } else {
     /** Begin Listening for connections with HTTP */
-    server = http.createServer(app)
-    server.listen(port)
+    server = http.createServer(app).listen(port)
     console.log('HTTP server enabled (HTTPS disabled)')
   }
   
