@@ -63,20 +63,20 @@ async function initServer() {
     let cert: string
     
     // Check if user provided custom certificate
-    if (process.env.CERT_PATH || process.env.KEY_PATH) {
-      // Validate that both CERT_PATH and KEY_PATH are provided
-      if (!!process.env.CERT_PATH !== !!process.env.KEY_PATH) {
-        throw new Error('Both CERT_PATH and KEY_PATH must be provided together for custom certificates.')
-      }
-      
+    const hasCertPath = !!process.env.CERT_PATH
+    const hasKeyPath = !!process.env.KEY_PATH
+    
+    if (hasCertPath && hasKeyPath) {
       console.log('Using custom certificate from environment variables')
       try {
-        cert = readFileSync(process.env.CERT_PATH, 'utf8')
-        key = readFileSync(process.env.KEY_PATH, 'utf8')
+        cert = readFileSync(process.env.CERT_PATH!, 'utf8')
+        key = readFileSync(process.env.KEY_PATH!, 'utf8')
       } catch (error) {
         console.error('Error reading certificate files:', error)
         throw new Error('Failed to read custom certificate files. Please check CERT_PATH and KEY_PATH.')
       }
+    } else if (hasCertPath || hasKeyPath) {
+      throw new Error('Both CERT_PATH and KEY_PATH must be provided together for custom certificates.')
     } else {
       // Generate or retrieve self-signed certificate
       const originalKeys = store['keys']
